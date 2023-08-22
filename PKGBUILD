@@ -49,17 +49,23 @@ sha512sums=(
 )
 
 package() {
-  local _mingw_prefix \
+  local _conv_excl=() \
+        _mingw_prefix \
         _version_cmd=()
   _mingw_prefix=$(cygpath -am ${MINGW_PREFIX})
   _version_cmd=("import sys;"
 	        "sys.stdout.write('.'.join(map(str,"
-		                               "sys.version_info[:2])))"
-  _pyver=$(${MINGW_PREFIX}/bin/python -c "${_version_cmd[*]}")
-  _pyinc=${_pyver}
+		                              "sys.version_info[:2])))"
+  _pyver="$("${MINGW_PREFIX}/bin/python" \
+              -c "${_version_cmd[*]}")"
+  _pyinc="${_pyver}"
   cd "${_realname}"
-
-  MSYS2_ARG_CONV_EXCL="--prefix=;--install-scripts=;--install-platlib=" \
+  _conv_excl=(
+    --prefix=
+    --install-scripts=
+    --install-platlib=)
+  MSYS2_ARG_CONV_EXCL="$(IFS=";"; \
+                           echo "${_conv_excl[*]}")" \
   PYTHONPYCACHEPREFIX="${PWD}/.cache/cpython/" \
     "${MINGW_PREFIX}/python" -m installer \
                              --destdir="${pkgdir}" \
@@ -69,10 +75,12 @@ package() {
 	  LICENSE.txt \
 	  "${pkgdir}${MINGW_PREFIX}/share/licenses/python-${_realname}/LICENSE.txt"
 
-  for _f in "${pkgdir}${MINGW_PREFIX}"/bin/*.py; do
+  for _f in "${pkgdir}${MINGW_PREFIX}/bin/"*.py; do
+    # DEBUG
+    echo "${_f}"
     sed -e "s|${_mingw_prefix}/bin/|/usr/bin/env |g" \
 	-i \
-	${_f}
+	"${_f}"
   done
 
   # Clean *.orig files
